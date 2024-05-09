@@ -1,5 +1,4 @@
 import streamlit as st
-import groq
 from groq import Groq
 import numpy as np
 import pandas as pd
