@@ -1,5 +1,5 @@
 import streamlit as st
-from groq import Groq
+from groq import GroqError, Environment
 import numpy as np
 import pandas as pd
 
@@ -24,33 +24,34 @@ with st.form("agent_config"):
     st.header("Configure Agent Parameters")
     parameters = agent_templates[agent_type]["parameters"]
     config_params = {param: st.text_input(param, value="") for param in parameters}
-    config_goals = st.text_input("Goals", value="")
+    config_goals = st.text_input("Goals", value=", ".join(agent_templates[agent_type]["goals"]))
     submit_button = st.form_submit_button("Generate Agent")
 
     if submit_button:
-        # Call generate_agent function on form submission
-        generate_agent(config_params, config_goals)
+        generate_agent(agent_type, config_params, config_goals)
 
-def generate_agent(config_params, config_goals):
+def generate_agent(agent_type, config_params, config_goals):
     try:
-        # Clean up the configuration parameters and goals
         config_params = {k: v.strip() for k, v in config_params.items()}
         config_goals = [goal.strip() for goal in config_goals.split(",")]
 
-        # Define a Groq model for agent generation
-        groq_model = """
+        groq_model = f"""
         def generate_agent(params: dict, goals: list) -> dict:
-            # Define the agent's behavior and goals based on the input parameters
             behavior = 'navigate' if 'indoor' in params.get('environment', '') else 'avoid obstacles'
-            return {'behavior': behavior, 'goals': goals}
+            return {{
+                'Agent Type': '{agent_type}',
+                'Parameters': params,
+                'Behavior': behavior,
+                'Goals': goals
+            }}
         """
 
-        # Create a Groq environment and execute the model
-        groq_env = groq.Environment()
-        agent = groq_env.execute(groq_model, params=config_params, goals=config_goals)
+        groq_env = Environment()  # Ensure this matches the actual setup
+        agent = groq_env.execute_code(groq_model, params=config_params, goals=config_goals)
 
-        # Display the generated agent
         st.header("Generated Agent")
         st.write(agent)
-    except groq.GroqError as e:  # Assuming GroqError is the correct exception type
+    except GroqError as e:
         st.error(f"Error generating agent: {e}")
+    except Exception as e:
+        st.error(f"Unexpected error: {e}")
